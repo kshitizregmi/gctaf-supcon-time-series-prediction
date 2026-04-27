@@ -203,6 +203,7 @@ def build_delta(mask: np.ndarray) -> np.ndarray:
 def fill_missing_with_zero(X_std: np.ndarray) -> np.ndarray:
     """Replace NaNs with 0 after standardization."""
     return np.nan_to_num(X_std, nan=0.0).astype(np.float32)
+    # Ablation study for triple missing masking
     # med = np.nanmedian(X_std, axis=(0, 1))  # shape (F,)
     # X_filled = np.where(np.isnan(X_std), med, X_std).astype(np.float32)
     # return X_filled
@@ -316,6 +317,8 @@ class MultiHeadSelfAttentionRPE(nn.Module):
         v = v.view(B, T, self.num_heads, self.d_head).transpose(1, 2)
 
         scores = torch.matmul(q, k.transpose(-2, -1)) / (self.d_head ** 0.5)  # [B,H,T,T]
+
+        # Comment this for ablation study for relative position.
         scores = scores + self.rpe(T, x.device).unsqueeze(0)
 
         attn = torch.softmax(scores, dim=-1)
@@ -325,6 +328,7 @@ class MultiHeadSelfAttentionRPE(nn.Module):
         out = out.transpose(1, 2).contiguous().view(B, T, C)
         return self.out(out)
 
+######################### USe this one for albation study with GCTAF ##############################
 
 # class EncoderBlock(nn.Module):
 #     def __init__(self, d_model: int, num_heads: int, mlp_ratio: int = 4, dropout: float = 0.1):
@@ -447,8 +451,9 @@ class SWANEncoder(nn.Module):
             nn.ReLU(),
             nn.Linear(d_model, d_model),
         )
-
+        # Comment tape for Ablation
         self.tape = TAPE(seq_len, d_model)
+        # Replace GCTAF with SWAN
         self.blocks = nn.ModuleList([
             GCTAFBlock(d_model, n_heads, dropout=dropout) for _ in range(n_layers)
         ])
